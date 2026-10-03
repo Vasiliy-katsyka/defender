@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>GeoShield Live Diagnostic Demo</title>
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; margin: 0; padding: 24px; background-color: #0b0f19; color: #f1f5f9; display: flex; justify-content: center; align-items: center; min-height: 100vh; }
+    .card { background: #1e293b; padding: 28px; border-radius: 12px; width: 100%; max-width: 580px; box-shadow: 0 10px 30px rgba(0,0,0,0.6); }
+    .badge { display: inline-block; padding: 4px 12px; border-radius: 999px; font-size: 13px; font-weight: bold; text-transform: uppercase; margin-bottom: 12px; }
+    .badge-blocked { background: #7f1d1d; color: #fca5a5; }
+    .badge-ok { background: #14532d; color: #86efac; }
+    .signals { list-style: none; padding: 0; margin: 16px 0; }
+    .signals li { display: flex; justify-content: space-between; align-items: center; padding: 10px 12px; margin-bottom: 6px; border-radius: 6px; background: #0f172a; font-size: 13px; }
+    .flagged { border-left: 4px solid #ef4444; }
+    .clean { border-left: 4px solid #22c55e; }
+    pre { background: #050811; padding: 12px; border-radius: 6px; font-size: 11px; overflow-x: auto; color: #94a3b8; font-family: monospace; }
+  </style>
+  <script src="defender.js"></script>
+</head>
+<body>
+  <div class="card">
+    <div id="badge" class="badge">Running Checks...</div>
+    <h2 id="headline" style="margin-top:0;">Analyzing Network Fingerprint</h2>
+    <p id="summary" style="color: #94a3b8; font-size: 14px;"></p>
+    <ul class="signals" id="signals"></ul>
+    <h4 style="margin: 16px 0 6px 0; font-size: 12px; text-transform: uppercase; color: #64748b;">Telemetry Raw Data</h4>
+    <pre id="raw-debug">Evaluating client...</pre>
+  </div>
+
+  <script>
+    async function run() {
+      const shield = new GeoShield({ riskThreshold: 40 });
+      const res = await shield.evaluate();
+
+      const badge = document.getElementById("badge");
+      const headline = document.getElementById("headline");
+      const summary = document.getElementById("summary");
+      const list = document.getElementById("signals");
+
+      badge.className = `badge ${res.isBlocked ? 'badge-blocked' : 'badge-ok'}`;
+      badge.textContent = res.isBlocked ? `Access Blocked (${res.riskScore}/100)` : `Access Granted (${res.riskScore}/100)`;
+
+      headline.textContent = res.isBlocked ? "Evasion / Restriction Detected" : "Connection Verified";
+      summary.textContent = res.isBlocked 
+        ? "Network telemetry indicates an anonymizing proxy, data center host, or geographic masking."
+        : "Session verified as a normal residential connection.";
+
+      list.innerHTML = res.signals.map(s => `
+        <li class="${s.flagged ? 'flagged' : 'clean'}">
+          <div>
+            <strong>${s.name}:</strong> <span style="color:#cbd5e1;">${s.value}</span>
+            <div style="font-size:11px; color:#94a3b8;">${s.note}</div>
+          </div>
+          <span style="font-weight:bold; color:${s.flagged ? '#f87171' : '#4ade80'};">
+            ${s.flagged ? 'FLAGGED' : 'PASS'}
+          </span>
+        </li>
+      `).join("");
+
+      document.getElementById("raw-debug").textContent = JSON.stringify(res.raw, null, 2);
+    }
+    run();
+  </script>
+</body>
+</html>
